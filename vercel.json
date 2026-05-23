@@ -1,5 +1,9 @@
 {
+  "functions": {
+    "api/[...path].js": { "maxDuration": 30 },
+    "api/cdn-proxy.js": { "maxDuration": 30 }
+  },
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }
