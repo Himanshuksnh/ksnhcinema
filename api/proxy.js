@@ -36,12 +36,15 @@ export default async function handler(req, res) {
   }
 
   // Forward original headers — auth signature headers must pass through
-  const skipHeaders = ['host', 'connection', 'transfer-encoding', 'x-forwarded-for', 'x-vercel-id', 'x-vercel-forwarded-for'];
+  const skipHeaders = ['host', 'connection', 'transfer-encoding', 'x-forwarded-for', 'x-vercel-id', 'x-vercel-forwarded-for', 'origin', 'referer', 'user-agent'];
   const forwardHeaders = {};
   for (const [k, v] of Object.entries(req.headers)) {
     if (!skipHeaders.includes(k.toLowerCase())) forwardHeaders[k] = v;
   }
   forwardHeaders['host'] = 'gapi.inmoviebox.com';
+  forwardHeaders['origin'] = 'https://gapi.inmoviebox.com';
+  forwardHeaders['referer'] = 'https://gapi.inmoviebox.com/';
+  forwardHeaders['user-agent'] = 'com.community.oneroom/50020080 (Linux; U; Android 15; en_US; V2311)';
   if (body) forwardHeaders['content-length'] = Buffer.byteLength(body).toString();
 
   console.log('[proxy] →', req.method, fullPath);
