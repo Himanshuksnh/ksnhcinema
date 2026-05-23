@@ -1,4 +1,5 @@
-// Vercel Catch-All — proxies /api/* → gapi.inmoviebox.com
+// Vercel Serverless Function — /api/proxy
+// All /api/* requests are rewritten here via vercel.json
 const https = require('https');
 
 module.exports = async (req, res) => {
@@ -12,42 +13,42 @@ module.exports = async (req, res) => {
     return;
   }
 
-  // req.url = /api/wefeed-mobile-bff/tab-operating?tabId=0
-  // Strip /api → /wefeed-mobile-bff/tab-operating?tabId=0
-  const rawPath = req.url.replace(/^\/api/, '') || '/';
+  // vercel.json rewrites /api/X?Y → /api/proxy?__path=/X&Y
+  // So req.url = /api/proxy?__path=/wefeed-mobile-bff/tab-operating&tabId=0
+  const url = new URL(req.url, 'https://placeholder.com');
+  const targetPath = url.searchParams.get('__path') || '/';
+  url.searchParams.delete('__path');
+  const qs = url.searchParams.toString();
+  const fullPath = targetPath + (qs ? '?' + qs : '');
 
   // Read POST body
   let body = '';
   if (req.method === 'POST') {
     body = await new Promise((resolve) => {
-      let chunks = [];
+      const chunks = [];
       req.on('data', c => chunks.push(c));
       req.on('end', () => resolve(Buffer.concat(chunks).toString()));
     });
   }
 
-  // Forward original headers (auth, signature, etc.) — these are critical for API auth
-  const skipHeaders = ['host', 'connection', 'transfer-encoding', 'x-forwarded-for', 'x-vercel-id'];
+  // Forward original headers — auth signature headers must pass through
+  const skipHeaders = ['host', 'connection', 'transfer-encoding', 'x-forwarded-for', 'x-vercel-id', 'x-vercel-forwarded-for'];
   const forwardHeaders = {};
   for (const [k, v] of Object.entries(req.headers)) {
-    if (!skipHeaders.includes(k.toLowerCase())) {
-      forwardHeaders[k] = v;
-    }
+    if (!skipHeaders.includes(k.toLowerCase())) forwardHeaders[k] = v;
   }
   forwardHeaders['host'] = 'gapi.inmoviebox.com';
-  if (body) {
-    forwardHeaders['content-length'] = Buffer.byteLength(body).toString();
-  }
+  if (body) forwardHeaders['content-length'] = Buffer.byteLength(body).toString();
+
+  console.log('[proxy] →', req.method, fullPath);
 
   const options = {
     hostname: 'gapi.inmoviebox.com',
     port: 443,
-    path: rawPath,
+    path: fullPath,
     method: req.method,
     headers: forwardHeaders,
   };
-
-  console.log('[proxy] →', req.method, 'gapi.inmoviebox.com' + rawPath);
 
   return new Promise((resolve) => {
     const proxyReq = https.request(options, (proxyRes) => {
@@ -56,15 +57,11 @@ module.exports = async (req, res) => {
       for (const [k, v] of Object.entries(proxyRes.headers)) {
         if (!skipRes.includes(k.toLowerCase())) outHeaders[k] = v;
       }
-
       res.writeHead(proxyRes.statusCode || 200, outHeaders);
 
       const chunks = [];
       proxyRes.on('data', c => chunks.push(c));
-      proxyRes.on('end', () => {
-        res.end(Buffer.concat(chunks));
-        resolve();
-      });
+      proxyRes.on('end', () => { res.end(Buffer.concat(chunks)); resolve(); });
     });
 
     proxyReq.on('error', (err) => {
