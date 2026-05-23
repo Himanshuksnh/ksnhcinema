@@ -69,6 +69,9 @@ export default async function handler(req, res) {
       for (const [k, v] of Object.entries(proxyRes.headers)) {
         if (!skipRes.includes(k.toLowerCase())) outHeaders[k] = v;
       }
+      if (proxyRes.statusCode === 407) {
+        delete outHeaders['content-length'];
+      }
       res.writeHead(proxyRes.statusCode || 200, outHeaders);
 
       const chunks = [];
