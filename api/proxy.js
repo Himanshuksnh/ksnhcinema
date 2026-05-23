@@ -24,11 +24,15 @@ module.exports = async (req, res) => {
   // Read POST body
   let body = '';
   if (req.method === 'POST') {
-    body = await new Promise((resolve) => {
-      const chunks = [];
-      req.on('data', c => chunks.push(c));
-      req.on('end', () => resolve(Buffer.concat(chunks).toString()));
-    });
+    if (req.body) {
+      body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+    } else {
+      body = await new Promise((resolve) => {
+        const chunks = [];
+        req.on('data', c => chunks.push(c));
+        req.on('end', () => resolve(Buffer.concat(chunks).toString()));
+      });
+    }
   }
 
   // Forward original headers — auth signature headers must pass through
@@ -76,4 +80,10 @@ module.exports = async (req, res) => {
     if (body) proxyReq.write(body);
     proxyReq.end();
   });
+};
+
+module.exports.config = {
+  api: {
+    bodyParser: false,
+  },
 };

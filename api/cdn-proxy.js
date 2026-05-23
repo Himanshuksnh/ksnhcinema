@@ -85,3 +85,9 @@ module.exports = async (req, res) => {
     proxyReq.end();
   });
 };
+
+module.exports.config = {
+  api: {
+    bodyParser: false,
+  },
+};
