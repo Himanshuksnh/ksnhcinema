@@ -1514,6 +1514,7 @@ export default function App() {
                     if (timeDiff > 0 && timeDiff < 350) {
                       handleDoubleClick(e);
                       lastTapRef.current = 0;
+                      setShowControls(false);
                       if (video.paused) video.play().catch(() => { });
                       else video.pause();
                     } else {
