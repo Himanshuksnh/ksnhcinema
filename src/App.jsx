@@ -1516,18 +1516,36 @@ export default function App() {
                     const now = Date.now();
                     const timeDiff = now - (lastTapRef.current || 0);
                     const video = videoRef.current;
-                    if (!video) return;
+                    const container = playerContainerRef.current;
+                    if (!video || !container) return;
+
+                    const rect = container.getBoundingClientRect();
+                    const clickX = e.clientX - rect.left;
+                    const width = rect.width;
 
                     if (timeDiff > 0 && timeDiff < 350) {
                       handleDoubleClick(e);
                       lastTapRef.current = 0;
                       setShowControls(false);
-                      if (video.paused) video.play().catch(() => { });
-                      else video.pause();
+                      // Reverse the play/pause if it was toggled by the first tap in the center
+                      const isCenter = clickX > width * 0.3 && clickX < width * 0.7;
+                      if (isCenter) {
+                        if (video.paused) video.play().catch(() => { });
+                        else video.pause();
+                      }
                     } else {
                       lastTapRef.current = now;
-                      if (video.paused) video.play().catch(() => { });
-                      else video.pause();
+                      
+                      // Center 40% of screen toggles play/pause
+                      const isCenter = clickX > width * 0.3 && clickX < width * 0.7;
+                      
+                      if (isCenter) {
+                        if (video.paused) video.play().catch(() => { });
+                        else video.pause();
+                      } else {
+                        // Side click toggles controls visibility
+                        setShowControls((prev) => !prev);
+                      }
                     }
                   }}
                 >
