@@ -73,7 +73,24 @@ export default async function handler(req, res) {
 
       const chunks = [];
       proxyRes.on('data', c => chunks.push(c));
-      proxyRes.on('end', () => { res.end(Buffer.concat(chunks)); resolve(); });
+      proxyRes.on('end', () => { 
+        if (proxyRes.statusCode === 407) {
+          const debugInfo = {
+            reqUrl: req.url,
+            rawQs,
+            finalQs,
+            fullPath,
+            forwardHeaders,
+            method: req.method,
+            body: body,
+            response: Buffer.concat(chunks).toString()
+          };
+          res.end(JSON.stringify(debugInfo, null, 2));
+        } else {
+          res.end(Buffer.concat(chunks)); 
+        }
+        resolve(); 
+      });
     });
 
     proxyReq.on('error', (err) => {
