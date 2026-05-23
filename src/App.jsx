@@ -1067,11 +1067,18 @@ export default function App() {
     setShowControls(true);
     if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
     controlsTimeoutRef.current = setTimeout(() => {
-      if (customPlaying) {
+      const video = videoRef.current;
+      if (video && !video.paused) {
         setShowControls(false);
       }
     }, 3000);
   };
+
+  useEffect(() => {
+    if (customPlaying) {
+      handlePlayerMouseMove();
+    }
+  }, [customPlaying]);
 
   // Perform seek scrubbing on input timeline changes
   const handleSeekChange = (e) => {
