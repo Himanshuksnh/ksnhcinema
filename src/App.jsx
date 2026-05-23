@@ -154,6 +154,10 @@ export default function App() {
 
   // Search Results
   const [searching, setSearching] = useState(false);
+
+  const [videoFit, setVideoFit] = useState('contain');
+  const lastTapRef = useRef(0);
+
   const [searchResults, setSearchResults] = useState([]);
   const [fallbackItemsMap, setFallbackItemsMap] = useState({});
 
@@ -1497,15 +1501,26 @@ export default function App() {
                   style={{
                     width: '100%',
                     height: '100%',
-                    objectFit: 'contain',
+                    objectFit: videoFit,
                     cursor: 'pointer',
                     display: (playInfo?.error || !playInfo?.videoUrl) ? 'none' : 'block'
                   }}
-                  onClick={() => {
+                  onClick={(e) => {
+                    const now = Date.now();
+                    const timeDiff = now - (lastTapRef.current || 0);
                     const video = videoRef.current;
                     if (!video) return;
-                    if (video.paused) video.play().catch(() => { });
-                    else video.pause();
+
+                    if (timeDiff > 0 && timeDiff < 350) {
+                      handleDoubleClick(e);
+                      lastTapRef.current = 0;
+                      if (video.paused) video.play().catch(() => { });
+                      else video.pause();
+                    } else {
+                      lastTapRef.current = now;
+                      if (video.paused) video.play().catch(() => { });
+                      else video.pause();
+                    }
                   }}
                 >
                   {captionsList.map((cap, idx) => (
@@ -1766,6 +1781,14 @@ export default function App() {
                             }
                           }} className="hud-control-btn hud-pip-btn" title="Picture in Picture">
                             🔳
+                          </button>
+
+                          {/* Fit/Fill Toggle */}
+                          <button onClick={() => {
+                            setVideoFit(prev => prev === 'contain' ? 'cover' : 'contain');
+                            triggerToast(videoFit === 'contain' ? 'Fit: Zoom (Fill)' : 'Fit: Normal');
+                          }} className="hud-control-btn" title="Adjust Screen Size">
+                            {videoFit === 'contain' ? '🔲' : '🔳'}
                           </button>
 
                           {/* Fullscreen handler button */}
