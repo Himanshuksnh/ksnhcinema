@@ -373,7 +373,7 @@ export default function App() {
   };
 
   // Open Detailed Streaming HUD (Direct Landscape Cinematic Playback Mode)
-  async function loadDetailsFromItem(item) {
+  async function openDetails(item) {
     const norm = normalizeItem(item);
     setSelected(norm);
     setPlayInfo(null);
@@ -435,41 +435,6 @@ export default function App() {
       setActiveLanguage('Original');
     }
   }
-
-  function openDetails(item) {
-    const norm = normalizeItem(item);
-    sessionStorage.setItem('ksnh-current-movie', JSON.stringify(norm));
-    window.location.hash = `/title/${norm.subjectId || norm.id}`;
-  }
-
-  useEffect(() => {
-    const onHashChange = () => {
-      const hash = window.location.hash;
-      if (hash.startsWith('#/title/')) {
-        const id = hash.replace('#/title/', '');
-        const stored = sessionStorage.getItem('ksnh-current-movie');
-        if (stored) {
-          try {
-            const item = JSON.parse(stored);
-            if (String(item.subjectId) === id || String(item.id) === id) {
-              loadDetailsFromItem(item);
-              return;
-            }
-          } catch (e) {}
-        }
-      } else {
-        if (selected) {
-          setSelected(null);
-          setIsPlaying(false);
-          setPlayInfo(null);
-        }
-      }
-    };
-    window.addEventListener('hashchange', onHashChange);
-    onHashChange();
-    return () => window.removeEventListener('hashchange', onHashChange);
-  }, [selected]);
-
 
   // Explicit dynamic playback loading (Polymorphic signature supporting se/ep and subjectId overrides)
   async function loadPlayback(subjectIdOrSe, se, ep) {
@@ -1507,11 +1472,15 @@ export default function App() {
       {/* Premium Cinematic Landscape Theater Player Overlay */}
       {selected && (
         <div className="theater-overlay-wrap" onClick={() => {
-          window.location.hash = '';
+          setSelected(null);
+          setIsPlaying(false);
+          setPlayInfo(null);
         }}>
         <div className="theater-container" onClick={(e) => e.stopPropagation()}>
             <button className="theater-close-btn" onClick={() => {
-              window.location.hash = '';
+              setSelected(null);
+              setIsPlaying(false);
+              setPlayInfo(null);
             }}>×</button>
 
             <div className="theater-main-content">
@@ -1567,18 +1536,15 @@ export default function App() {
                     } else {
                       lastTapRef.current = now;
                       
-                      if (!showControls) {
-                        // If controls are hidden, any tap just shows them
-                        setShowControls(true);
+                      // Center 40% of screen toggles play/pause
+                      const isCenter = clickX > width * 0.3 && clickX < width * 0.7;
+                      
+                      if (isCenter) {
+                        if (video.paused) video.play().catch(() => { });
+                        else video.pause();
                       } else {
-                        // If controls are visible, handle play/pause or hide
-                        const isCenter = clickX > width * 0.3 && clickX < width * 0.7;
-                        if (isCenter) {
-                          if (video.paused) video.play().catch(() => { });
-                          else video.pause();
-                        } else {
-                          setShowControls(false);
-                        }
+                        // Side click toggles controls visibility
+                        setShowControls((prev) => !prev);
                       }
                     }
                   }}
