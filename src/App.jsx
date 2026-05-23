@@ -711,13 +711,21 @@ export default function App() {
   const playerContainerRef = useRef(null);
   const controlsTimeoutRef = useRef(null);
 
-  // Load Hls.js dynamically — needed for m3u8 streams
+  // Preload Hls.js + dash.js at app start — not on first episode click
+  // This eliminates the library-load delay that causes initial buffering stutter
   useEffect(() => {
-    if (window.Hls) return;
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/hls.js@1.4.12/dist/hls.min.js';
-    script.async = true;
-    document.body.appendChild(script);
+    if (!window.Hls) {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/hls.js@1.4.12/dist/hls.min.js';
+      script.async = true;
+      document.body.appendChild(script);
+    }
+    if (!window.dashjs) {
+      const script2 = document.createElement('script');
+      script2.src = 'https://cdn.jsdelivr.net/npm/dashjs@4.7.1/dist/dash.all.min.js';
+      script2.async = true;
+      document.body.appendChild(script2);
+    }
   }, []);
 
   // ─── Flutter-exact Video Player Binding ──────────────────────────────────────
@@ -760,7 +768,17 @@ export default function App() {
         video.play().catch((e) => console.log('MP4 autoplay blocked:', e.message));
       } else if (isHls) {
         if (window.Hls && window.Hls.isSupported()) {
-          hlsInstance = new window.Hls({ maxMaxBufferLength: 30, enableWorker: true });
+          hlsInstance = new window.Hls({
+            enableWorker: true,
+            maxBufferLength: 60,          // buffer 60s ahead (was 30s)
+            maxMaxBufferLength: 120,       // allow up to 120s buffer
+            maxBufferSize: 60 * 1000 * 1000, // 60MB buffer
+            maxBufferHole: 0.5,           // tolerate 0.5s gaps before stalling
+            lowLatencyMode: false,        // disable low-latency — we want smooth, not live
+            backBufferLength: 30,         // keep 30s behind for seeking
+            startLevel: -1,               // auto-select best quality on start
+            abrEwmaDefaultEstimate: 5000000, // assume 5mbps initially — faster quality ramp
+          });
           hlsInstance.loadSource(streamUrl);
           hlsInstance.attachMedia(video);
           hlsInstance.on(window.Hls.Events.MANIFEST_PARSED, () => {

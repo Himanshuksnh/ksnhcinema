@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/proxy?target=gapi&path=/$1" },
+    { "source": "/apig/(.*)", "destination": "/api/proxy?target=apig&path=/$1" },
+    { "source": "/cdn-proxy", "destination": "/api/cdn-proxy" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
