@@ -1,6 +1,5 @@
 // Vercel Catch-All Serverless Function
-// Handles ALL /api/* requests and proxies them to gapi.inmoviebox.com
-// File name [...path].js = catch-all route in Vercel
+// Handles ALL /api/* requests → proxies to gapi.inmoviebox.com
 
 const https = require('https');
 
@@ -11,7 +10,8 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Headers', '*');
 
   if (req.method === 'OPTIONS') {
-    res.status(204).end();
+    res.writeHead(204);
+    res.end();
     return;
   }
 
@@ -28,9 +28,9 @@ module.exports = async (req, res) => {
     });
   }
 
-  // Forward headers
-  const forwardHeaders = {};
+  // Build forward headers — keep original headers from client
   const skip = ['host', 'connection', 'transfer-encoding'];
+  const forwardHeaders = {};
   for (const [k, v] of Object.entries(req.headers)) {
     if (!skip.includes(k.toLowerCase())) forwardHeaders[k] = v;
   }
@@ -47,19 +47,29 @@ module.exports = async (req, res) => {
 
   return new Promise((resolve) => {
     const proxyReq = https.request(options, (proxyRes) => {
+      // Forward response headers
       const skipRes = ['transfer-encoding', 'connection'];
+      const responseHeaders = { 'Access-Control-Allow-Origin': '*' };
       for (const [k, v] of Object.entries(proxyRes.headers)) {
-        if (!skipRes.includes(k.toLowerCase())) res.setHeader(k, v);
+        if (!skipRes.includes(k.toLowerCase())) responseHeaders[k] = v;
       }
-      res.status(proxyRes.statusCode || 200);
+
+      res.writeHead(proxyRes.statusCode || 200, responseHeaders);
 
       let data = '';
       proxyRes.on('data', chunk => { data += chunk; });
-      proxyRes.on('end', () => { res.end(data); resolve(); });
+      proxyRes.on('end', () => {
+        res.end(data);
+        resolve();
+      });
     });
 
     proxyReq.on('error', (err) => {
-      res.status(502).json({ error: err.message });
+      console.error('[proxy] error:', err.message);
+      if (!res.headersSent) {
+        res.writeHead(502, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
       resolve();
     });
 

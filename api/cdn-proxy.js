@@ -1,28 +1,27 @@
-// Vercel Serverless Function — handles /cdn-proxy route
-// Streams CDN video content with Cookie injection and Range support
-// Replaces the vite.config.js streamProxyMiddleware (local dev only)
+// Vercel Serverless Function — /cdn-proxy
+// Streams CDN video with Cookie injection and Range support
 
 const https = require('https');
 const http = require('http');
 
 module.exports = async (req, res) => {
-  // CORS preflight
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type');
   res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Content-Type, Accept-Ranges');
-  res.setHeader('Access-Control-Max-Age', '86400');
 
   if (req.method === 'OPTIONS') {
-    res.status(204).end();
+    res.writeHead(204);
+    res.end();
     return;
   }
 
-  const url = new URL(req.url, 'http://localhost');
+  const url = new URL(req.url, 'https://placeholder.vercel.app');
   const rawUrl = url.searchParams.get('url');
   const cookie = url.searchParams.get('cookie') || '';
 
   if (!rawUrl) {
-    res.status(400).end('Missing url param');
+    res.writeHead(400);
+    res.end('Missing url param');
     return;
   }
 
@@ -30,7 +29,8 @@ module.exports = async (req, res) => {
   try {
     targetUrl = new URL(decodeURIComponent(rawUrl));
   } catch (e) {
-    res.status(400).end('Invalid url: ' + e.message);
+    res.writeHead(400);
+    res.end('Invalid url: ' + e.message);
     return;
   }
 
@@ -47,41 +47,38 @@ module.exports = async (req, res) => {
       'Referer': 'https://gapi.inmoviebox.com/',
       'Origin': 'https://gapi.inmoviebox.com',
       ...(cookie ? { 'Cookie': decodeURIComponent(cookie) } : {}),
-      // Forward Range header — critical for video seeking
       ...(req.headers['range'] ? { 'Range': req.headers['range'] } : {}),
     },
   };
 
   return new Promise((resolve) => {
     const proxyReq = lib.request(options, (proxyRes) => {
-      const statusCode = proxyRes.statusCode || 200;
+      const responseHeaders = {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Expose-Headers': 'Content-Length, Content-Range, Content-Type, Accept-Ranges',
+        'accept-ranges': 'bytes',
+      };
 
-      // Forward video-relevant headers
-      const forwardHeaders = [
-        'content-type', 'content-length', 'content-range',
-        'accept-ranges', 'cache-control', 'etag', 'last-modified',
-      ];
-      for (const h of forwardHeaders) {
-        if (proxyRes.headers[h]) res.setHeader(h, proxyRes.headers[h]);
+      const forward = ['content-type', 'content-length', 'content-range', 'accept-ranges', 'cache-control', 'etag', 'last-modified'];
+      for (const h of forward) {
+        if (proxyRes.headers[h]) responseHeaders[h] = proxyRes.headers[h];
       }
 
-      // Always advertise byte-range support for seeking
-      if (!proxyRes.headers['accept-ranges']) {
-        res.setHeader('accept-ranges', 'bytes');
-      }
-
-      // Fix MPD content-type for dash.js
       if (targetUrl.pathname.endsWith('.mpd') || targetUrl.pathname.endsWith('.xml')) {
-        res.setHeader('content-type', 'application/dash+xml');
+        responseHeaders['content-type'] = 'application/dash+xml';
       }
 
-      res.status(statusCode);
+      res.writeHead(proxyRes.statusCode || 200, responseHeaders);
       proxyRes.pipe(res);
       proxyRes.on('end', resolve);
     });
 
     proxyReq.on('error', (err) => {
-      if (!res.headersSent) res.status(502).end('Proxy error: ' + err.message);
+      console.error('[cdn-proxy] error:', err.message);
+      if (!res.headersSent) {
+        res.writeHead(502);
+        res.end('Proxy error: ' + err.message);
+      }
       resolve();
     });
 

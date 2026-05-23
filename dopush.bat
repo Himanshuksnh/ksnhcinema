@@ -1,4 +1,3 @@
 git add -A
-git status
-git commit -m "Fix Vercel catch-all proxy route"
+git commit -m "Fix 500 error in serverless proxy"
 git push origin master
