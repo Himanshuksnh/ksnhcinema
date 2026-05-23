@@ -1,8 +1,8 @@
 // Vercel Serverless Function — /api/proxy
 // All /api/* requests are rewritten here via vercel.json
-const https = require('https');
+import https from 'https';
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', '*');
@@ -80,9 +80,9 @@ module.exports = async (req, res) => {
     if (body) proxyReq.write(body);
     proxyReq.end();
   });
-};
+}
 
-module.exports.config = {
+export const config = {
   api: {
     bodyParser: false,
   },

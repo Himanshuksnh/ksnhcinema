@@ -1,10 +1,10 @@
 // Vercel Serverless Function — /cdn-proxy
 // Streams CDN video with Cookie injection and Range support
 
-const https = require('https');
-const http = require('http');
+import https from 'https';
+import http from 'http';
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type');
   res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Content-Type, Accept-Ranges');
@@ -84,9 +84,9 @@ module.exports = async (req, res) => {
 
     proxyReq.end();
   });
-};
+}
 
-module.exports.config = {
+export const config = {
   api: {
     bodyParser: false,
   },
