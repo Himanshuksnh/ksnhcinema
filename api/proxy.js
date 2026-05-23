@@ -19,7 +19,9 @@ export default async function handler(req, res) {
   
   // Preserve exact original query string (URLSearchParams.toString() breaks signatures by re-encoding)
   const rawQs = req.url.split('?')[1] || '';
-  const finalQs = rawQs.replace(/(^|&)__path=[^&]*/g, '').replace(/^&/, '');
+  let finalQs = rawQs.replace(/(^|&)__path=[^&]*/g, '');
+  // Vercel :path* rewrite also injects a `path=...` parameter. We must remove it so the signature matches!
+  finalQs = finalQs.replace(/(^|&)path=[^&]*/g, '').replace(/^&/, '');
   const fullPath = targetPath + (finalQs ? '?' + finalQs : '');
 
   // Read POST body

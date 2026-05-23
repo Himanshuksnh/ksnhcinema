@@ -1,2 +1,26 @@
 {
-  "reqUrl": "/api/wefeed-mobile-bff/tab-operating?tabId=1&__path=%2Fwefeed-mobile
+  "reqUrl": "/api/wefeed-mobile-bff/tab-operating?tabId=1&__path=%2Fwefeed-mobile-bff%2Ftab-operating&path=wefeed-mobile-bff%2Ftab-operating",
+  "rawQs": "tabId=1&__path=%2Fwefeed-mobile-bff%2Ftab-operating&path=wefeed-mobile-bff%2Ftab-operating",
+  "finalQs": "tabId=1&path=wefeed-mobile-bff%2Ftab-operating",
+  "fullPath": "/wefeed-mobile-bff/tab-operating?tabId=1&path=wefeed-mobile-bff%2Ftab-operating",
+  "forwardHeaders": {
+    "x-client-info": "{\"package_name\":\"com.community.oneroom\",\"version_name\":\"3.0.11.1230.03\",\"version_code\":50020080,\"os\":\"android\",\"os_version\":\"15\"}",
+    "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOjY5NzA2NDk5Mjg4NzIxMjEzNTIsImV4cCI6MTc4NTM5NjQxMSwiaWF0IjoxNzc3NjIwMTExfQ.wKJvdaoBhRzy6qOBxnk63-JEVIvlkSAaOlhRKN-l5iM",
+    "x-family-mode": "0",
+    "x-client-status": "1",
+    "accept": "*/*",
+    "x-play-mode": "2",
+    "accept-encoding": "gzip",
+    "x-content-mode": "0",
+    "x-tr-signature": "1779547452896|2|KyVsr0yw6xlpLOLN9F+2GQ==",
+    "x-invocation-id": "bom1::fdnml-1779547453240-2e44bb729782",
+    "host": "gapi.inmoviebox.com",
+    "origin": "https://gapi.inmoviebox.com",
+    "referer": "https://gapi.inmoviebox.com/",
+    "user-agent": "com.community.oneroom/50020080 (Linux; U; Android 15; en_US; V2311)",
+    "x-vercel-id": "bom1::fdnml-1779547453240-2e44bb729782"
+  },
+  "method": "GET",
+  "body": "",
+  "response": "{\"code\":407, \"reason\":\"Unauthorized\", \"message\":\"Signature invalid\", \"metadata\":{}}"
+}
