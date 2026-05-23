@@ -14,12 +14,13 @@ export default async function handler(req, res) {
   }
 
   // vercel.json rewrites /api/X?Y → /api/proxy?__path=/X&Y
-  // So req.url = /api/proxy?__path=/wefeed-mobile-bff/tab-operating&tabId=0
   const url = new URL(req.url, 'https://placeholder.com');
   const targetPath = url.searchParams.get('__path') || '/';
-  url.searchParams.delete('__path');
-  const qs = url.searchParams.toString();
-  const fullPath = targetPath + (qs ? '?' + qs : '');
+  
+  // Preserve exact original query string (URLSearchParams.toString() breaks signatures by re-encoding)
+  const rawQs = req.url.split('?')[1] || '';
+  const finalQs = rawQs.replace(/(^|&)__path=[^&]*/g, '').replace(/^&/, '');
+  const fullPath = targetPath + (finalQs ? '?' + finalQs : '');
 
   // Read POST body
   let body = '';
@@ -36,10 +37,14 @@ export default async function handler(req, res) {
   }
 
   // Forward original headers — auth signature headers must pass through
-  const skipHeaders = ['host', 'connection', 'transfer-encoding', 'x-forwarded-for', 'x-vercel-id', 'x-vercel-forwarded-for', 'origin', 'referer', 'user-agent'];
+  const skipHeaders = ['host', 'connection', 'transfer-encoding', 'origin', 'referer', 'user-agent'];
   const forwardHeaders = {};
   for (const [k, v] of Object.entries(req.headers)) {
-    if (!skipHeaders.includes(k.toLowerCase())) forwardHeaders[k] = v;
+    const lowerK = k.toLowerCase();
+    if (skipHeaders.includes(lowerK) || lowerK.startsWith('x-vercel-') || lowerK.startsWith('x-forwarded-') || lowerK === 'x-real-ip' || lowerK === 'forwarded') {
+      continue;
+    }
+    forwardHeaders[k] = v;
   }
   forwardHeaders['host'] = 'gapi.inmoviebox.com';
   forwardHeaders['origin'] = 'https://gapi.inmoviebox.com';
