@@ -148,6 +148,10 @@ export default defineConfig({
     streamProxyMiddleware(),
     VitePWA({
       registerType: 'autoUpdate',
+      injectRegister: 'auto',
+      devOptions: {
+        enabled: true
+      },
       includeAssets: ['icon-192x192.png', 'icon-512x512.png'],
       manifest: {
         name: 'KSNH Cinema',
@@ -156,6 +160,7 @@ export default defineConfig({
         theme_color: '#0a0a0a',
         background_color: '#0a0a0a',
         display: 'standalone',
+        start_url: '/',
         icons: [
           {
             src: 'icon-192x192.png',
