@@ -849,6 +849,7 @@ a, button, select, input {
   justify-content: center;
   overflow-y: auto;
   padding: 0;
+  pointer-events: none; /* clicks pass through to container only */
 }
 
 .theater-container {
@@ -858,6 +859,7 @@ a, button, select, input {
   position: relative;
   width: 100%;
   margin-top: 0;
+  pointer-events: auto; /* only container is clickable */
 }
 
 @media (min-width: 900px) {

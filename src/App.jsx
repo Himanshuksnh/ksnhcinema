@@ -185,6 +185,29 @@ export default function App() {
   // Native player references
   const [isPlaying, setIsPlaying] = useState(false);
 
+  // Restore selected video from URL on mount & handle browser back
+  useEffect(() => {
+    const handleUrl = () => {
+      const params = new URLSearchParams(window.location.search);
+      const vId = params.get('v');
+      if (!vId) {
+        setSelected(null);
+        setIsPlaying(false);
+        setPlayInfo(null);
+      }
+    };
+
+    const params = new URLSearchParams(window.location.search);
+    const vId = params.get('v');
+    if (vId) {
+      openDetails({ subjectId: vId, title: 'Loading...' });
+    }
+
+    window.addEventListener('popstate', handleUrl);
+    return () => window.removeEventListener('popstate', handleUrl);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Apply body dynamic theme classes
   useEffect(() => {
     document.body.className = `theme-${theme}`;
@@ -375,6 +398,7 @@ export default function App() {
   // Open Detailed Streaming HUD (Direct Landscape Cinematic Playback Mode)
   async function openDetails(item) {
     const norm = normalizeItem(item);
+    window.history.pushState({}, '', `?v=${norm.subjectId}`);
     setSelected(norm);
     setPlayInfo(null);
     setQualities([]);
@@ -863,79 +887,105 @@ export default function App() {
     };
   }, [playInfo?.videoUrl, isPlaying]);
 
-  // Keyboard Shortcuts for Theater Player
+  // ─── Single Keyboard Handler ─────────────────────────────────────────────────
   useEffect(() => {
-    if (!selected || !isPlaying) return;
-
     const handleKeyDown = (e) => {
-      // Ignore if user is typing in an input
-      if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+      // Ignore when typing in inputs
+      const tag = document.activeElement?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+      // Blur any focused element so Space doesn't scroll or trigger it
+      if (tag === 'SELECT' || tag === 'BUTTON' || tag === 'A') {
+        document.activeElement.blur();
+      }
+
+      // Only active when player is open and video is loaded
+      if (!selected || !isPlaying) return;
 
       const video = videoRef.current;
       if (!video) return;
 
-      switch (e.key.toLowerCase()) {
-        case ' ':
+      switch (e.code) {
+        case 'Space':
           e.preventDefault();
-          if (video.paused) video.play().catch(() => {});
-          else video.pause();
+          if (video.paused) { video.play().catch(() => {}); triggerToast('▶ Play'); }
+          else { video.pause(); triggerToast('⏸ Pause'); }
           break;
-        case 'm':
+        case 'ArrowRight':
           e.preventDefault();
-          const newMute = !isMuted;
-          setIsMuted(newMute);
-          video.muted = newMute;
+          video.currentTime = Math.min(video.duration || 0, video.currentTime + 10);
+          triggerToast('10s ⏩');
           break;
-        case 'f':
-          e.preventDefault();
-          if (!document.fullscreenElement) {
-            playerContainerRef.current?.requestFullscreen().catch(() => {});
-          } else {
-            document.exitFullscreen().catch(() => {});
-          }
-          break;
-        case 'arrowleft':
+        case 'ArrowLeft':
           e.preventDefault();
           video.currentTime = Math.max(0, video.currentTime - 10);
+          triggerToast('⏪ -10s');
           break;
-        case 'arrowright':
+        case 'ArrowUp':
           e.preventDefault();
-          video.currentTime = Math.min(video.duration || 100, video.currentTime + 10);
+          { const v = Math.min(1, video.volume + 0.05); video.volume = v; setVolume(v); video.muted = false; setIsMuted(false); triggerToast(`🔊 Vol ${Math.round(v * 100)}%`); }
           break;
-        case 'n': { // Next Episode
+        case 'ArrowDown':
+          e.preventDefault();
+          { const v = Math.max(0, video.volume - 0.05); video.volume = v; setVolume(v); video.muted = false; triggerToast(`🔉 Vol ${Math.round(v * 100)}%`); }
+          break;
+        case 'KeyM':
+          e.preventDefault();
+          { const m = !video.muted; video.muted = m; setIsMuted(m); triggerToast(m ? '🔇 Muted' : '🔊 Unmuted'); }
+          break;
+        case 'KeyF':
+          e.preventDefault();
+          if (!document.fullscreenElement) {
+            playerContainerRef.current?.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
+          } else {
+            document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
+          }
+          break;
+        case 'KeyN': { // Next Episode
           e.preventDefault();
           if (seasonsList.length > 0) {
-            const currentList = seasonsList[selectedSeasonIndex]?.episodeList || [];
-            const idx = currentList.indexOf(Number(episode));
-            if (idx !== -1 && idx < currentList.length - 1) {
-              const nextEp = currentList[idx + 1];
+            const list = seasonsList[selectedSeasonIndex]?.episodeList || [];
+            const idx = list.indexOf(Number(episode));
+            if (idx !== -1 && idx < list.length - 1) {
+              const nextEp = list[idx + 1];
               setEpisode(nextEp);
               loadPlayback(season, nextEp);
+              triggerToast(`▶ Episode ${nextEp}`);
             }
           }
           break;
         }
-        case 'p': { // Previous Episode
+        case 'KeyP': { // Previous Episode
           e.preventDefault();
           if (seasonsList.length > 0) {
-            const currentList = seasonsList[selectedSeasonIndex]?.episodeList || [];
-            const idx = currentList.indexOf(Number(episode));
+            const list = seasonsList[selectedSeasonIndex]?.episodeList || [];
+            const idx = list.indexOf(Number(episode));
             if (idx > 0) {
-              const prevEp = currentList[idx - 1];
+              const prevEp = list[idx - 1];
               setEpisode(prevEp);
               loadPlayback(season, prevEp);
+              triggerToast(`◀ Episode ${prevEp}`);
             }
           }
           break;
         }
+        case 'Escape':
+          e.preventDefault();
+          if (document.fullscreenElement) {
+            document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
+          } else {
+            setIsPlaying(false);
+            setPlayInfo(null);
+          }
+          break;
+        default:
+          break;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selected, isPlaying, episode, season, selectedSeasonIndex, seasonsList, isMuted]);
-
-  // Persistent Watchlist toggles
+  }, [selected, isPlaying, playInfo, episode, season, selectedSeasonIndex, seasonsList, isMuted]);
   const toggleWatchlist = (item) => {
     const isBookmarked = watchlist.some((x) => x.subjectId === item.subjectId);
     if (isBookmarked) {
@@ -964,93 +1014,6 @@ export default function App() {
     setReviewText('');
     triggerToast('Review submitted!');
   };
-
-  // Premium custom keyboard shortcuts listener
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      // Ignore key events if typing in form inputs
-      const activeEl = document.activeElement;
-      if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT')) {
-        return;
-      }
-
-      const video = videoRef.current;
-      if (!video || !isPlaying || !playInfo?.videoUrl) return;
-
-      switch (e.code) {
-        case 'Space':
-          e.preventDefault();
-          if (video.paused) {
-            video.play().catch(() => { });
-            triggerToast('▶ Play');
-          } else {
-            video.pause();
-            triggerToast('⏸ Pause');
-          }
-          break;
-        case 'ArrowRight':
-          e.preventDefault();
-          video.currentTime = Math.min(video.duration || 0, video.currentTime + 10);
-          triggerToast('10s ⏩');
-          break;
-        case 'ArrowLeft':
-          e.preventDefault();
-          video.currentTime = Math.max(0, video.currentTime - 10);
-          triggerToast('⏪ -10s');
-          break;
-        case 'ArrowUp':
-          e.preventDefault();
-          const vUp = Math.min(1, video.volume + 0.05);
-          video.volume = vUp;
-          setVolume(vUp);
-          setIsMuted(false);
-          video.muted = false;
-          triggerToast(`🔊 Vol ${Math.round(vUp * 100)}%`);
-          break;
-        case 'ArrowDown':
-          e.preventDefault();
-          const vDown = Math.max(0, video.volume - 0.05);
-          video.volume = vDown;
-          setVolume(vDown);
-          video.muted = false;
-          triggerToast(`🔉 Vol ${Math.round(vDown * 100)}%`);
-          break;
-        case 'KeyM':
-          e.preventDefault();
-          const nextMute = !video.muted;
-          video.muted = nextMute;
-          setIsMuted(nextMute);
-          triggerToast(nextMute ? '🔇 Muted' : '🔊 Unmuted');
-          break;
-        case 'KeyF':
-          e.preventDefault();
-          const container = playerContainerRef.current;
-          if (container) {
-            if (!document.fullscreenElement) {
-              container.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => { });
-            } else {
-              document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => { });
-            }
-          }
-          break;
-        case 'Escape':
-          e.preventDefault();
-          if (document.fullscreenElement) {
-            document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => { });
-          } else {
-            // Exit theater mode
-            setIsPlaying(false);
-            setPlayInfo(null);
-          }
-          break;
-        default:
-          break;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isPlaying, playInfo]);
 
   // Helper to format playback seconds into HH:MM:SS or MM:SS
   const formatTime = (secs) => {
@@ -1150,6 +1113,7 @@ export default function App() {
       )}
 
       {/* Navigation System: Bottom Nav (Mobile) & Side Rail (PC) */}
+      {!selected && (
       <nav className="v3-navigation">
         <div className="v3-nav-brand">
           <div className="v3-nav-logo">KSNH</div>
@@ -1183,8 +1147,10 @@ export default function App() {
           </li>
         </ul>
       </nav>
+      )}
 
       {/* Main App Stage */}
+      {!selected && (
       <main className="v3-main-stage">
         {/* Dynamic Top Header */}
         <header className="v3-top-header">
@@ -1468,22 +1434,24 @@ export default function App() {
           </section>
         )}
       </main>
+      )}
 
       {/* Premium Cinematic Landscape Theater Player Overlay */}
       {selected && (
-        <div className="theater-overlay-wrap" onClick={() => {
-          setSelected(null);
-          setIsPlaying(false);
-          setPlayInfo(null);
-        }}>
-        <div className="theater-container" onClick={(e) => e.stopPropagation()}>
-            <button className="theater-close-btn" onClick={() => {
-              setSelected(null);
-              setIsPlaying(false);
-              setPlayInfo(null);
-            }}>×</button>
+        <main className="v3-main-stage theater-page-stage" style={{ padding: 0, margin: 0, overflow: 'hidden' }}>
+        <div className="theater-container" style={{ margin: 0, width: '100vw', maxWidth: '100vw', height: '100vh', padding: 0, display: 'flex' }}>
+            <button className="theater-close-btn" style={{ position: 'absolute', top: '16px', left: '16px', zIndex: 1000, background: 'rgba(0,0,0,0.6)', color: '#fff', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '20px', border: 'none', cursor: 'pointer', backdropFilter: 'blur(4px)' }} onClick={() => {
+              if (window.history.length > 1 && window.location.search.includes('?v=')) {
+                window.history.back();
+              } else {
+                setSelected(null);
+                setIsPlaying(false);
+                setPlayInfo(null);
+                window.history.pushState({}, '', window.location.pathname);
+              }
+            }}>←</button>
 
-            <div className="theater-main-content">
+            <div className="theater-main-content" style={{ height: '100vh', borderRadius: 0, border: 'none', flex: 1, width: '100%' }}>
               {/* Left Column: Landscape 16:9 Custom Premium Video Player */}
               <div
                 ref={playerContainerRef}
@@ -2009,7 +1977,7 @@ export default function App() {
               </div>
             </div>
           </div>
-        </div>
+        </main>
       )}
     </div>
   );
