@@ -2,7 +2,6 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import https from 'https';
 import http from 'http';
-import { VitePWA } from 'vite-plugin-pwa';
 
 // Persistent keep-alive agents — reuse TCP connections across segments
 // This eliminates the per-segment TCP handshake overhead that causes buffering stutters
@@ -145,39 +144,7 @@ function streamProxyMiddleware() {
 export default defineConfig({
   plugins: [
     react(), 
-    streamProxyMiddleware(),
-    VitePWA({
-      registerType: 'autoUpdate',
-      injectRegister: 'auto',
-      devOptions: {
-        enabled: true,
-        type: 'module'
-      },
-      includeAssets: ['icon-192x192.png', 'icon-512x512.png'],
-      manifest: {
-        name: 'KSNH Cinema',
-        short_name: 'KSNH',
-        description: 'Watch. Enjoy. Experience.',
-        theme_color: '#0a0a0a',
-        background_color: '#0a0a0a',
-        display: 'standalone',
-        start_url: '/',
-        icons: [
-          {
-            src: '/icon-192x192.png',
-            sizes: '192x192',
-            type: 'image/png',
-            purpose: 'any maskable'
-          },
-          {
-            src: '/icon-512x512.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any maskable'
-          }
-        ]
-      }
-    })
+    streamProxyMiddleware()
   ],
   server: {
     port: 5176,
