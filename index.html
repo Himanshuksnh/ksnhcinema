@@ -14,7 +14,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
     
     <!-- PWA Meta Tags -->
-    <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#0a0a0a" />
     <link rel="apple-touch-icon" href="/icon-192x192.png" />
     
@@ -24,14 +23,6 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/service-worker.js')
-            .then(reg => console.log('Service Worker registered', reg))
-            .catch(err => console.log('Service Worker registration failed', err));
-        });
-      }
-    </script>
+
   </body>
 </html>

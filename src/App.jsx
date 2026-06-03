@@ -96,6 +96,7 @@ export default function App() {
   // Navigation View & State Settings
   const [sidebarView, setSidebarView] = useState('explore'); // explore, watchlist, analytics, settings
   const [activeTab, setActiveTab] = useState(TAB_OPTIONS[0]);
+  const [installPromptEvent, setInstallPromptEvent] = useState(null);
   const [tabDataMap, setTabDataMap] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -184,6 +185,25 @@ export default function App() {
 
   // Native player references
   const [isPlaying, setIsPlaying] = useState(false);
+
+  // PWA Install Prompt Listener
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setInstallPromptEvent(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!installPromptEvent) return;
+    installPromptEvent.prompt();
+    const { outcome } = await installPromptEvent.userChoice;
+    if (outcome === 'accepted') {
+      setInstallPromptEvent(null);
+    }
+  };
 
   // Restore selected video from URL on mount & handle browser back
   useEffect(() => {
@@ -1145,6 +1165,16 @@ export default function App() {
             <span className="v3-nav-icon">🎨</span>
             <span className="v3-nav-label">Theme</span>
           </li>
+          {installPromptEvent && (
+            <li
+              className="v3-nav-item install-app-btn"
+              onClick={handleInstallClick}
+              style={{ background: 'var(--theme-bright)', color: '#000', marginTop: '20px', fontWeight: 'bold' }}
+            >
+              <span className="v3-nav-icon">📲</span>
+              <span className="v3-nav-label">Install App</span>
+            </li>
+          )}
         </ul>
       </nav>
       )}
