@@ -1,8 +1,7 @@
 {
   "version": 2,
-  "buildCommand": null,
+  "buildCommand": "",
   "outputDirectory": ".",
-  "routes": [
-    { "src": "/(.*)", "dest": "/index.html" }
-  ]
+  "installCommand": "",
+  "framework": null
 }
